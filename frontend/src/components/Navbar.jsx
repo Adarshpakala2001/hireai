@@ -1,54 +1,123 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Brain, Menu, X } from "lucide-react";
 import { useState } from "react";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const location = useLocation();
+
+  function closeMenu() {
+    setMenuOpen(false);
+  }
+
+  /*
+   * Keep the full navbar on:
+   * - Home
+   * - Login
+   * - Register
+   *
+   * Hide it everywhere inside the authenticated workspace.
+   */
+  const publicPages = [
+    "/",
+    "/login",
+    "/register",
+  ];
+
+  const isPublicPage = publicPages.includes(
+    location.pathname
+  );
+
+  if (!isPublicPage) {
+    return null;
+  }
+
   return (
     <header className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="brand">
+
+        {/* Brand */}
+        <Link
+          to="/"
+          className="brand"
+          onClick={closeMenu}
+        >
           <span className="brand-icon">
             <Brain size={22} />
           </span>
 
-          <span className="brand-name">HireAI</span>
+          <span className="brand-name">
+            HireAI
+          </span>
         </Link>
 
-        <nav className={`nav-links ${menuOpen ? "open" : ""}`}>
-          <a href="#features" onClick={() => setMenuOpen(false)}>
+        {/* Navigation */}
+        <nav
+          className={`nav-links ${
+            menuOpen ? "open" : ""
+          }`}
+        >
+
+          {/* Features */}
+          <a
+            href="/#features"
+            onClick={closeMenu}
+          >
             Features
           </a>
 
-          <a href="#how-it-works" onClick={() => setMenuOpen(false)}>
+          {/* How It Works */}
+          <a
+            href="/#how-it-works"
+            onClick={closeMenu}
+          >
             How It Works
           </a>
 
-          <a href="#technology" onClick={() => setMenuOpen(false)}>
+          {/* Technology */}
+          <a
+            href="/#technology"
+            onClick={closeMenu}
+          >
             Technology
           </a>
 
-          <Link to="/login" onClick={() => setMenuOpen(false)}>
+          {/* Login */}
+          <Link
+            to="/login"
+            onClick={closeMenu}
+          >
             Login
           </Link>
 
+          {/* Get Started */}
           <Link
             to="/register"
             className="nav-button"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
           >
             Get Started
           </Link>
+
         </nav>
 
+        {/* Mobile Menu */}
         <button
           className="mobile-menu-button"
-          onClick={() => setMenuOpen(!menuOpen)}
+          onClick={() =>
+            setMenuOpen(!menuOpen)
+          }
           aria-label="Toggle navigation"
+          type="button"
         >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          {menuOpen ? (
+            <X size={24} />
+          ) : (
+            <Menu size={24} />
+          )}
         </button>
+
       </div>
     </header>
   );

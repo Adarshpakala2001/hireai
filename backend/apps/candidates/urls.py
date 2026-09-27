@@ -1,5 +1,10 @@
 from django.urls import path
 
+from .admin_views import (
+    AdminCandidateListView,
+    AdminCandidateDetailView,
+)
+
 from .views import (
     CandidateProfileView,
     ResumeUploadView,
@@ -8,6 +13,17 @@ from .views import (
 
 
 urlpatterns = [
+
+    path(
+        "admin/",
+        AdminCandidateListView.as_view(),
+        name="admin-candidate-list",
+    ),
+    path(
+        "admin/<int:pk>/",
+        AdminCandidateDetailView.as_view(),
+        name="admin-candidate-detail",
+    ),
     path(
         "profile/",
         CandidateProfileView.as_view(),

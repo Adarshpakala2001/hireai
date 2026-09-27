@@ -4,9 +4,13 @@ from .models import Job
 
 
 class JobSerializer(serializers.ModelSerializer):
-
     created_by_username = serializers.CharField(
         source="created_by.username",
+        read_only=True,
+    )
+
+    application_count = serializers.IntegerField(
+        source="applications.count",
         read_only=True,
     )
 
@@ -27,14 +31,15 @@ class JobSerializer(serializers.ModelSerializer):
             "status",
             "created_by",
             "created_by_username",
+            "application_count",
             "created_at",
             "updated_at",
         ]
 
         read_only_fields = [
-            "id",
             "created_by",
             "created_by_username",
+            "application_count",
             "created_at",
             "updated_at",
         ]
