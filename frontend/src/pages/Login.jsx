@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Brain, ArrowRight, ShieldCheck } from "lucide-react";
 
 import api from "../services/api";
+import GoogleSignIn from "../components/GoogleSignIn";
 
 function Login() {
   const navigate = useNavigate();
@@ -22,6 +24,8 @@ function Login() {
       ...previous,
       [name]: value,
     }));
+
+    setError("");
   }
 
   async function handleSubmit(event) {
@@ -31,51 +35,31 @@ function Login() {
     setLoading(true);
 
     try {
-      // Login
-      const response = await api.post(
-        "/auth/login/",
-        formData
-      );
+      const response = await api.post("/auth/login/", formData);
 
       const { access, refresh } = response.data;
 
-      // Store JWT tokens
-      localStorage.setItem(
-        "access_token",
-        access
-      );
+      localStorage.setItem("access_token", access);
+      localStorage.setItem("refresh_token", refresh);
 
-      localStorage.setItem(
-        "refresh_token",
-        refresh
-      );
-
-      // Get logged-in user's information
-      const meResponse = await api.get(
-        "/auth/me/",
-        {
-          headers: {
-            Authorization: `Bearer ${access}`,
-          },
-        }
-      );
+      const meResponse = await api.get("/auth/me/", {
+        headers: {
+          Authorization: `Bearer ${access}`,
+        },
+      });
 
       const user = meResponse.data;
 
-      // Role-based redirect
       if (user.role === "ADMIN") {
         navigate("/admin/dashboard");
       } else {
         navigate("/dashboard");
       }
-
     } catch (err) {
       console.error("Login error:", err);
 
       if (err.response?.data?.detail) {
-        setError(
-          err.response.data.detail
-        );
+        setError(err.response.data.detail);
       } else {
         setError(
           "Unable to connect to the server. Please try again."
@@ -93,17 +77,11 @@ function Login() {
         {/* Left Side */}
         <section className="auth-info">
 
-          <Link
-            to="/"
-            className="auth-brand"
-          >
+          <Link to="/" className="auth-brand">
             <span className="brand-icon">
               <Brain size={22} />
             </span>
-
-            <span>
-              HireAI
-            </span>
+            <span>HireAI</span>
           </Link>
 
           <div className="auth-info-content">
@@ -119,36 +97,26 @@ function Login() {
             </h1>
 
             <p>
-              Access your HireAI workspace
-              to manage jobs, candidates,
-              resumes, applications, and
-              AI-assisted recruitment
-              workflows.
+              Access your HireAI workspace to manage jobs,
+              candidates, resumes, applications, and
+              AI-assisted recruitment workflows.
             </p>
 
             <div className="auth-security">
-
               <ShieldCheck size={20} />
 
               <div>
-
-                <strong>
-                  Secure authentication
-                </strong>
+                <strong>Secure authentication</strong>
 
                 <span>
-                  Your account is protected
-                  with JWT-based authentication.
+                  Your account is protected with
+                  JWT-based authentication.
                 </span>
-
               </div>
-
             </div>
 
           </div>
-
         </section>
-
 
         {/* Right Side */}
         <section className="auth-card-wrapper">
@@ -156,28 +124,31 @@ function Login() {
           <div className="auth-card">
 
             <div className="auth-card-header">
-
-              <h2>
-                Sign in
-              </h2>
+              <h2>Sign in</h2>
 
               <p>
-                Enter your credentials to
-                access your account.
+                Enter your credentials to access your account.
               </p>
-
             </div>
 
-
-            {/* Error */}
+            {/* Error Message */}
             {error && (
               <div className="auth-error">
                 {error}
               </div>
             )}
 
+            {/* Google Sign-In */}
+            <div className="auth-social-section">
+              <GoogleSignIn onError={setError} />
+            </div>
 
-            {/* Login Form */}
+            {/* Divider */}
+            <div className="auth-divider">
+              <span>OR CONTINUE WITH EMAIL</span>
+            </div>
+
+            {/* Username and Password Login */}
             <form
               className="auth-form"
               onSubmit={handleSubmit}
@@ -203,7 +174,6 @@ function Login() {
 
               </div>
 
-
               {/* Password */}
               <div className="form-group">
 
@@ -224,51 +194,36 @@ function Login() {
 
               </div>
 
-
-              {/* Submit */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 className="auth-submit"
                 disabled={loading}
               >
-
-                {loading
-                  ? "Signing in..."
-                  : "Sign In"}
+                {loading ? "Signing in..." : "Sign In"}
 
                 {!loading && (
                   <ArrowRight size={18} />
                 )}
-
               </button>
 
             </form>
 
-
             {/* Register */}
             <div className="auth-footer">
-
-              <span>
-                Don't have an account?
-              </span>
+              <span>Don't have an account?</span>
 
               <Link to="/register">
                 Create one
               </Link>
-
             </div>
 
-
             {/* Back Home */}
-            <Link
-              to="/"
-              className="back-home"
-            >
+            <Link to="/" className="back-home">
               ← Back to HireAI
             </Link>
 
           </div>
-
         </section>
 
       </div>
