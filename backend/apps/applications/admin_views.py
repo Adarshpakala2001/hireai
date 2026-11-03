@@ -1,7 +1,8 @@
-from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -22,6 +23,36 @@ from .serializers import (
 User = get_user_model()
 
 
+def get_recruiter_jobs(user):
+    """
+    ADMIN can access all jobs.
+    RECRUITER can access only jobs created by that recruiter.
+    """
+    queryset = Job.objects.all()
+
+    if user.role == User.Role.RECRUITER:
+        queryset = queryset.filter(created_by=user)
+
+    return queryset
+
+
+def get_recruiter_applications(user):
+    """
+    ADMIN can access all applications.
+    RECRUITER can access applications for their own jobs.
+    """
+    queryset = Application.objects.all()
+
+    if user.role == User.Role.RECRUITER:
+        queryset = queryset.filter(job__created_by=user)
+
+    return queryset
+
+
+# =====================================================
+# ADMIN / RECRUITER DASHBOARD
+# =====================================================
+
 class AdminDashboardView(APIView):
     permission_classes = [
         IsAuthenticated,
@@ -30,30 +61,42 @@ class AdminDashboardView(APIView):
 
     def get(self, request):
 
-        open_jobs = Job.objects.filter(
+        jobs = get_recruiter_jobs(request.user)
+
+        applications = (
+            get_recruiter_applications(request.user)
+        )
+
+        open_jobs = jobs.filter(
             status=Job.Status.OPEN
         ).count()
 
-        total_jobs = Job.objects.count()
+        total_jobs = jobs.count()
 
-        total_applications = (
-            Application.objects.count()
-        )
+        total_applications = applications.count()
 
-        total_candidates = User.objects.filter(
-            role=User.Role.CANDIDATE
-        ).count()
+        if request.user.role == User.Role.RECRUITER:
+            total_candidates = (
+                applications
+                .values("candidate_id")
+                .distinct()
+                .count()
+            )
+        else:
+            total_candidates = User.objects.filter(
+                role=User.Role.CANDIDATE
+            ).count()
 
-        interviews = Application.objects.filter(
+        interviews = applications.filter(
             status=Application.Status.INTERVIEW
         ).count()
 
-        selected = Application.objects.filter(
+        selected = applications.filter(
             status=Application.Status.SELECTED
         ).count()
 
         recent_applications = (
-            Application.objects
+            applications
             .select_related(
                 "candidate",
                 "job",
@@ -62,7 +105,7 @@ class AdminDashboardView(APIView):
         )
 
         recent_jobs = (
-            Job.objects
+            jobs
             .select_related("created_by")
             .prefetch_related("applications")
             .order_by("-created_at")[:5]
@@ -111,19 +154,15 @@ class AdminDashboardView(APIView):
                 "statistics": {
                     "open_jobs": open_jobs,
                     "total_jobs": total_jobs,
-                    "total_applications":
-                        total_applications,
-                    "total_candidates":
-                        total_candidates,
+                    "total_applications": total_applications,
+                    "total_candidates": total_candidates,
                     "interviews": interviews,
                     "selected": selected,
                 },
 
-                "recent_applications":
-                    application_data,
+                "recent_applications": application_data,
 
-                "recent_jobs":
-                    job_data,
+                "recent_jobs": job_data,
             },
 
             status=status.HTTP_200_OK,
@@ -131,12 +170,10 @@ class AdminDashboardView(APIView):
 
 
 # =====================================================
-# ADMIN APPLICATION LIST
+# ADMIN / RECRUITER APPLICATION LIST
 # =====================================================
 
-class AdminApplicationListView(
-    generics.ListAPIView
-):
+class AdminApplicationListView(generics.ListAPIView):
     serializer_class = AdminApplicationSerializer
 
     permission_classes = [
@@ -147,7 +184,7 @@ class AdminApplicationListView(
     def get_queryset(self):
 
         queryset = (
-            Application.objects
+            get_recruiter_applications(self.request.user)
             .select_related(
                 "candidate",
                 "job",
@@ -162,13 +199,9 @@ class AdminApplicationListView(
             "status"
         )
 
-        job_id = self.request.query_params.get(
-            "job"
-        )
+        job_id = self.request.query_params.get("job")
 
-        search = self.request.query_params.get(
-            "search"
-        )
+        search = self.request.query_params.get("search")
 
         if status_filter:
             queryset = queryset.filter(
@@ -182,27 +215,21 @@ class AdminApplicationListView(
 
         if search:
             queryset = queryset.filter(
-                candidate__username__icontains=search
-            ) | queryset.filter(
-                candidate__first_name__icontains=search
-            ) | queryset.filter(
-                candidate__last_name__icontains=search
-            ) | queryset.filter(
-                candidate__email__icontains=search
-            ) | queryset.filter(
-                job__title__icontains=search
+                Q(candidate__username__icontains=search)
+                | Q(candidate__first_name__icontains=search)
+                | Q(candidate__last_name__icontains=search)
+                | Q(candidate__email__icontains=search)
+                | Q(job__title__icontains=search)
             )
 
         return queryset
 
 
 # =====================================================
-# ADMIN APPLICATION DETAIL
+# ADMIN / RECRUITER APPLICATION DETAIL
 # =====================================================
 
-class AdminApplicationDetailView(
-    generics.RetrieveAPIView
-):
+class AdminApplicationDetailView(generics.RetrieveAPIView):
     serializer_class = AdminApplicationSerializer
 
     permission_classes = [
@@ -213,7 +240,7 @@ class AdminApplicationDetailView(
     def get_queryset(self):
 
         return (
-            Application.objects
+            get_recruiter_applications(self.request.user)
             .select_related(
                 "candidate",
                 "job",
@@ -227,18 +254,12 @@ class AdminApplicationDetailView(
 
         application = self.get_object()
 
-        # Generate/update the match analysis
-        # when the recruiter opens the application.
         if application.resume:
-            save_match_analysis(
-                application
-            )
+            save_match_analysis(application)
 
             application.refresh_from_db()
 
-        serializer = self.get_serializer(
-            application
-        )
+        serializer = self.get_serializer(application)
 
         return Response(
             serializer.data,
@@ -247,26 +268,23 @@ class AdminApplicationDetailView(
 
 
 # =====================================================
-# ADMIN APPLICATION STATUS UPDATE
+# ADMIN / RECRUITER APPLICATION STATUS UPDATE
 # =====================================================
 
-class AdminApplicationStatusUpdateView(
-    generics.UpdateAPIView
-):
-    serializer_class = (
-        AdminApplicationStatusSerializer
-    )
+class AdminApplicationStatusUpdateView(generics.UpdateAPIView):
+    serializer_class = AdminApplicationStatusSerializer
 
     permission_classes = [
         IsAuthenticated,
         IsAdminOrRecruiter,
     ]
 
-    queryset = Application.objects.all()
+    http_method_names = ["patch"]
 
-    http_method_names = [
-        "patch",
-    ]
+    def get_queryset(self):
+        return get_recruiter_applications(
+            self.request.user
+        )
 
     def update(self, request, *args, **kwargs):
 
@@ -278,29 +296,29 @@ class AdminApplicationStatusUpdateView(
             partial=True,
         )
 
-        serializer.is_valid(
-            raise_exception=True
-        )
+        serializer.is_valid(raise_exception=True)
 
         serializer.save()
 
         return Response(
             {
-                "message":
-                    "Application status updated successfully.",
-
-                "application": (
-                    AdminApplicationSerializer(
-                        application,
-                        context={
-                            "request": request
-                        },
-                    ).data
+                "message": (
+                    "Application status updated successfully."
                 ),
+
+                "application": AdminApplicationSerializer(
+                    application,
+                    context={"request": request},
+                ).data,
             },
 
             status=status.HTTP_200_OK,
         )
+
+
+# =====================================================
+# ADMIN / RECRUITER RESUME DOWNLOAD
+# =====================================================
 
 class AdminResumeDownloadView(APIView):
     permission_classes = [
@@ -310,24 +328,22 @@ class AdminResumeDownloadView(APIView):
 
     def get(self, request, pk):
 
-        try:
-            application = (
-                Application.objects
-                .select_related("resume")
-                .get(pk=pk)
-            )
-        except Application.DoesNotExist:
-            return Response(
-                {
-                    "detail": "Application not found."
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        applications = (
+            get_recruiter_applications(request.user)
+            .select_related("resume", "job")
+        )
+
+        application = get_object_or_404(
+            applications,
+            pk=pk,
+        )
 
         if not application.resume:
             return Response(
                 {
-                    "detail": "This application does not have a resume."
+                    "detail": (
+                        "This application does not have a resume."
+                    )
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -342,9 +358,10 @@ class AdminResumeDownloadView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        file_path = Path(resume.file.path)
+        try:
+            file_handle = resume.file.open("rb")
 
-        if not file_path.exists():
+        except (FileNotFoundError, OSError, ValueError):
             return Response(
                 {
                     "detail": "Resume file could not be found."
@@ -352,13 +369,11 @@ class AdminResumeDownloadView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        response = FileResponse(
-            open(file_path, "rb"),
+        return FileResponse(
+            file_handle,
             as_attachment=True,
             filename=(
                 resume.original_filename
-                or file_path.name
+                or "candidate_resume"
             ),
         )
-
-        return response

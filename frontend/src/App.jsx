@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   BrowserRouter,
@@ -28,6 +29,7 @@ import Analysis from "./pages/Analysis";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminJobs from "./pages/AdminJobs";
 import AdminCreateJob from "./pages/AdminCreateJob";
+import AdminEditJob from "./pages/AdminEditJob";
 import AdminCandidates from "./pages/AdminCandidates";
 import AdminCandidateDetail from "./pages/AdminCandidateDetail";
 import AdminApplications from "./pages/AdminApplications";
@@ -36,14 +38,11 @@ import AdminApplicationReview from "./pages/AdminApplicationReview";
 function App() {
   return (
     <BrowserRouter>
-      {/*
-        Public Navbar
-        The Navbar component automatically hides itself
-        on authenticated workspace pages.
-      */}
+      {/* Public Navbar */}
       <Navbar />
 
       <Routes>
+
         {/* =========================================
             PUBLIC ROUTES
         ========================================= */}
@@ -63,11 +62,13 @@ function App() {
           element={<Register />}
         />
 
+
         {/* =========================================
             CANDIDATE WORKSPACE
         ========================================= */}
 
         <Route element={<CandidateLayout />}>
+
           <Route
             path="/dashboard"
             element={<Dashboard />}
@@ -107,7 +108,9 @@ function App() {
             path="/analysis/:applicationId"
             element={<Analysis />}
           />
+
         </Route>
+
 
         {/* =========================================
             RECRUITER WORKSPACE
@@ -117,13 +120,15 @@ function App() {
           path="/admin"
           element={<RecruiterLayout />}
         >
+
           {/* Recruiter Dashboard */}
           <Route
             path="dashboard"
             element={<AdminDashboard />}
           />
 
-          {/* Recruiter Jobs */}
+
+          {/* Recruiter Job Management */}
           <Route
             path="jobs"
             element={<AdminJobs />}
@@ -133,6 +138,13 @@ function App() {
             path="jobs/create"
             element={<AdminCreateJob />}
           />
+
+          {/* Edit Existing Job */}
+          <Route
+            path="jobs/:id/edit"
+            element={<AdminEditJob />}
+          />
+
 
           {/* Recruiter Candidates */}
           <Route
@@ -145,6 +157,7 @@ function App() {
             element={<AdminCandidateDetail />}
           />
 
+
           {/* Recruiter Applications */}
           <Route
             path="applications"
@@ -155,16 +168,19 @@ function App() {
             path="applications/:id"
             element={<AdminApplicationReview />}
           />
+
         </Route>
 
+
         {/* =========================================
-            FALLBACK
+            FALLBACK ROUTE
         ========================================= */}
 
         <Route
           path="*"
           element={<Navigate to="/" replace />}
         />
+
       </Routes>
     </BrowserRouter>
   );

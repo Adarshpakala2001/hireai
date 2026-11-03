@@ -1,3 +1,4 @@
+
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 
@@ -11,6 +12,15 @@ class JobListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = Job.objects.all().order_by("-created_at")
+
+        user = self.request.user
+
+        # Recruiters see only their own job postings.
+        if (
+            user.is_authenticated
+            and user.role == "RECRUITER"
+        ):
+            queryset = queryset.filter(created_by=user)
 
         search = self.request.query_params.get("search")
         location = self.request.query_params.get("location")
@@ -44,8 +54,21 @@ class JobListCreateView(generics.ListCreateAPIView):
 
 
 class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Job.objects.all()
     serializer_class = JobSerializer
+
+    def get_queryset(self):
+        queryset = Job.objects.all()
+
+        user = self.request.user
+
+        # Recruiters can access only their own job details.
+        if (
+            user.is_authenticated
+            and user.role == "RECRUITER"
+        ):
+            queryset = queryset.filter(created_by=user)
+
+        return queryset
 
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH", "DELETE"]:

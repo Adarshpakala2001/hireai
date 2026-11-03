@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -30,7 +31,7 @@ function AdminApplications() {
     fetchApplications();
   }, [statusFilter, jobFilter]);
 
-  async function fetchApplications() {
+  async function fetchApplications(searchTerm = search) {
     const token = localStorage.getItem("access_token");
 
     if (!token) {
@@ -52,8 +53,8 @@ function AdminApplications() {
         params.job = jobFilter;
       }
 
-      if (search.trim()) {
-        params.search = search.trim();
+      if (searchTerm.trim()) {
+        params.search = searchTerm.trim();
       }
 
       const response = await api.get(
@@ -98,14 +99,12 @@ function AdminApplications() {
 
   function handleSearch(event) {
     event.preventDefault();
-    fetchApplications();
+    fetchApplications(search);
   }
 
   function clearSearch() {
     setSearch("");
-    setTimeout(() => {
-      fetchApplications();
-    }, 0);
+    fetchApplications("");
   }
 
   function formatDate(dateString) {
@@ -214,6 +213,7 @@ function AdminApplications() {
         </form>
 
 
+        {/* Status Filters */}
         <div className="admin-application-filters">
 
           <button
@@ -317,10 +317,12 @@ function AdminApplications() {
         </div>
 
 
+        {/* Refresh */}
         <button
           type="button"
           className="admin-applications-refresh"
-          onClick={fetchApplications}
+          onClick={() => fetchApplications(search)}
+          disabled={loading}
         >
           <RefreshCw size={17} />
           Refresh
@@ -361,6 +363,7 @@ function AdminApplications() {
         </div>
 
 
+        {/* Loading */}
         {loading ? (
 
           <div className="admin-applications-loading">
@@ -372,6 +375,7 @@ function AdminApplications() {
 
         ) : applications.length === 0 ? (
 
+          /* Empty State */
           <div className="admin-applications-empty">
 
             <Users size={40} />
@@ -389,6 +393,7 @@ function AdminApplications() {
 
         ) : (
 
+          /* Applications Table */
           <div className="admin-applications-table-wrapper">
 
             <table className="admin-applications-table">
@@ -407,141 +412,133 @@ function AdminApplications() {
 
               <tbody>
 
-                {applications.map(
-                  (application) => (
+                {applications.map((application) => (
 
-                    <tr
-                      key={application.id}
-                    >
+                  <tr key={application.id}>
 
-                      {/* Candidate */}
-                      <td>
+                    {/* Candidate */}
+                    <td>
 
-                        <div className="admin-candidate-cell">
+                      <div className="admin-candidate-cell">
 
-                          <div className="admin-candidate-avatar">
-                            {application.candidate_name
-                              ?.charAt(0)
-                              ?.toUpperCase()}
-                          </div>
-
-                          <div>
-
-                            <strong>
-                              {application.candidate_name}
-                            </strong>
-
-                            <span>
-                              {application.candidate_email ||
-                                application.candidate_username}
-                            </span>
-
-                          </div>
-
+                        <div className="admin-candidate-avatar">
+                          {application.candidate_name
+                            ?.charAt(0)
+                            ?.toUpperCase()}
                         </div>
 
-                      </td>
-
-
-                      {/* Job */}
-                      <td>
-
-                        <div className="admin-job-cell">
+                        <div>
 
                           <strong>
-                            {application.job_title}
+                            {application.candidate_name}
                           </strong>
 
-                        </div>
-
-                      </td>
-
-
-                      {/* Resume */}
-                      <td>
-
-                        <div className="admin-resume-cell">
-
-                          <FileText size={17} />
-
                           <span>
-                            {application.resume_filename ||
-                              "No resume"}
+                            {application.candidate_email ||
+                              application.candidate_username}
                           </span>
 
                         </div>
 
-                      </td>
+                      </div>
+
+                    </td>
 
 
-                      {/* Match */}
-                      <td>
+                    {/* Job */}
+                    <td>
 
-                        {application.match_score !==
-                        null &&
-                        application.match_score !==
-                        undefined ? (
+                      <div className="admin-job-cell">
 
-                          <span
-                            className={`admin-match-score ${getScoreClass(
-                              application.match_score
-                            )}`}
-                          >
-                            {application.match_score}%
-                          </span>
+                        <strong>
+                          {application.job_title}
+                        </strong>
 
-                        ) : (
+                      </div>
 
-                          <span className="score-none">
-                            Not analyzed
-                          </span>
-
-                        )}
-
-                      </td>
+                    </td>
 
 
-                      {/* Status */}
-                      <td>
+                    {/* Resume */}
+                    <td>
+
+                      <div className="admin-resume-cell">
+
+                        <FileText size={17} />
+
+                        <span>
+                          {application.resume_filename ||
+                            "No resume"}
+                        </span>
+
+                      </div>
+
+                    </td>
+
+
+                    {/* AI Match Score */}
+                    <td>
+
+                      {application.match_score !== null &&
+                      application.match_score !== undefined ? (
 
                         <span
-                          className={`admin-status status-${application.status.toLowerCase()}`}
+                          className={`admin-match-score ${getScoreClass(
+                            application.match_score
+                          )}`}
                         >
-                          {application.status}
+                          {application.match_score}%
                         </span>
 
-                      </td>
+                      ) : (
 
-
-                      {/* Date */}
-                      <td>
-
-                        <span className="admin-applied-date">
-                          {formatDate(
-                            application.applied_at
-                          )}
+                        <span className="score-none">
+                          Not analyzed
                         </span>
 
-                      </td>
+                      )}
+
+                    </td>
 
 
-                      {/* Action */}
-                      <td>
+                    {/* Status */}
+                    <td>
 
-                        <Link
-                          to={`/admin/applications/${application.id}`}
-                          className="admin-view-application"
-                        >
-                          <Eye size={16} />
-                          View
-                        </Link>
+                      <span
+                        className={`admin-status status-${application.status.toLowerCase()}`}
+                      >
+                        {application.status}
+                      </span>
 
-                      </td>
+                    </td>
 
-                    </tr>
 
-                  )
-                )}
+                    {/* Applied Date */}
+                    <td>
+
+                      <span className="admin-applied-date">
+                        {formatDate(application.applied_at)}
+                      </span>
+
+                    </td>
+
+
+                    {/* View Application */}
+                    <td>
+
+                      <Link
+                        to={`/admin/applications/${application.id}`}
+                        className="admin-view-application"
+                      >
+                        <Eye size={16} />
+                        View
+                      </Link>
+
+                    </td>
+
+                  </tr>
+
+                ))}
 
               </tbody>
 

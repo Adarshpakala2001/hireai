@@ -1,9 +1,15 @@
+
 from rest_framework import serializers
 
 from .models import Application, MatchAnalysis
 
 
+# =====================================================
+# CANDIDATE APPLICATION SERIALIZER
+# =====================================================
+
 class ApplicationSerializer(serializers.ModelSerializer):
+
     job_title = serializers.CharField(
         source="job.title",
         read_only=True,
@@ -93,9 +99,14 @@ class ApplicationSerializer(serializers.ModelSerializer):
         return attrs
 
 
+# =====================================================
+# CANDIDATE MATCH ANALYSIS SERIALIZER
+# =====================================================
+
 class MatchAnalysisSerializer(
     serializers.ModelSerializer
 ):
+
     job_title = serializers.CharField(
         source="application.job.title",
         read_only=True,
@@ -128,12 +139,13 @@ class MatchAnalysisSerializer(
 
 
 # =====================================================
-# ADMIN / RECRUITER SERIALIZERS
+# ADMIN / RECRUITER APPLICATION SERIALIZER
 # =====================================================
 
 class AdminApplicationSerializer(
     serializers.ModelSerializer
 ):
+
     job_title = serializers.CharField(
         source="job.title",
         read_only=True,
@@ -165,7 +177,20 @@ class AdminApplicationSerializer(
 
     resume_url = serializers.SerializerMethodField()
 
+    # AI Match Analysis fields
     match_score = serializers.SerializerMethodField()
+
+    matching_skills = serializers.SerializerMethodField()
+
+    missing_skills = serializers.SerializerMethodField()
+
+    experience_alignment = serializers.SerializerMethodField()
+
+    strengths = serializers.SerializerMethodField()
+
+    suggestions = serializers.SerializerMethodField()
+
+    analysis_method = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
@@ -174,37 +199,42 @@ class AdminApplicationSerializer(
             "id",
             "job",
             "job_title",
+
+            # Candidate information
             "candidate",
             "candidate_name",
             "candidate_username",
             "candidate_email",
+
+            # Resume information
             "resume",
             "resume_filename",
             "resume_text",
             "resume_url",
+
+            # Application information
             "cover_letter",
             "status",
+
+            # AI analysis information
             "match_score",
+            "matching_skills",
+            "missing_skills",
+            "experience_alignment",
+            "strengths",
+            "suggestions",
+            "analysis_method",
+
+            # Timestamps
             "applied_at",
             "updated_at",
         ]
 
-        read_only_fields = [
-            "id",
-            "job",
-            "job_title",
-            "candidate",
-            "candidate_name",
-            "candidate_username",
-            "candidate_email",
-            "resume",
-            "resume_filename",
-            "resume_url",
-            "cover_letter",
-            "match_score",
-            "applied_at",
-            "updated_at",
-        ]
+        read_only_fields = fields
+
+    # -------------------------------------------------
+    # CANDIDATE INFORMATION
+    # -------------------------------------------------
 
     def get_candidate_name(self, obj):
         return (
@@ -212,7 +242,12 @@ class AdminApplicationSerializer(
             or obj.candidate.username
         )
 
+    # -------------------------------------------------
+    # RESUME INFORMATION
+    # -------------------------------------------------
+
     def get_resume_url(self, obj):
+
         if not obj.resume or not obj.resume.file:
             return None
 
@@ -225,18 +260,128 @@ class AdminApplicationSerializer(
 
         return obj.resume.file.url
 
-    def get_match_score(self, obj):
+    # -------------------------------------------------
+    # AI ANALYSIS HELPER
+    # -------------------------------------------------
+
+    def get_analysis_value(self, obj, field, default=None):
+        """
+        Safely retrieve AI analysis values.
+
+        Returns a default value when an application
+        does not have an associated MatchAnalysis.
+        """
+
         try:
-            return float(
-                obj.match_analysis.match_score
-            )
+            analysis = obj.match_analysis
+
         except MatchAnalysis.DoesNotExist:
+            return default
+
+        return getattr(
+            analysis,
+            field,
+            default,
+        )
+
+    # -------------------------------------------------
+    # AI MATCH SCORE
+    # -------------------------------------------------
+
+    def get_match_score(self, obj):
+
+        score = self.get_analysis_value(
+            obj,
+            "match_score",
+            None,
+        )
+
+        if score is None:
             return None
 
+        return float(score)
+
+    # -------------------------------------------------
+    # MATCHING SKILLS
+    # -------------------------------------------------
+
+    def get_matching_skills(self, obj):
+
+        return self.get_analysis_value(
+            obj,
+            "matching_skills",
+            [],
+        )
+
+    # -------------------------------------------------
+    # MISSING SKILLS
+    # -------------------------------------------------
+
+    def get_missing_skills(self, obj):
+
+        return self.get_analysis_value(
+            obj,
+            "missing_skills",
+            [],
+        )
+
+    # -------------------------------------------------
+    # EXPERIENCE ALIGNMENT
+    # -------------------------------------------------
+
+    def get_experience_alignment(self, obj):
+
+        return self.get_analysis_value(
+            obj,
+            "experience_alignment",
+            "",
+        )
+
+    # -------------------------------------------------
+    # STRENGTHS
+    # -------------------------------------------------
+
+    def get_strengths(self, obj):
+
+        return self.get_analysis_value(
+            obj,
+            "strengths",
+            [],
+        )
+
+    # -------------------------------------------------
+    # SUGGESTIONS
+    # -------------------------------------------------
+
+    def get_suggestions(self, obj):
+
+        return self.get_analysis_value(
+            obj,
+            "suggestions",
+            [],
+        )
+
+    # -------------------------------------------------
+    # ANALYSIS METHOD
+    # -------------------------------------------------
+
+    def get_analysis_method(self, obj):
+
+        return self.get_analysis_value(
+            obj,
+            "analysis_method",
+            "",
+        )
+
+
+# =====================================================
+# ADMIN / RECRUITER APPLICATION STATUS SERIALIZER
+# =====================================================
 
 class AdminApplicationStatusSerializer(
     serializers.ModelSerializer
 ):
+
     class Meta:
         model = Application
 
@@ -245,6 +390,7 @@ class AdminApplicationStatusSerializer(
         ]
 
     def validate_status(self, value):
+
         valid_statuses = {
             choice[0]
             for choice in Application.Status.choices

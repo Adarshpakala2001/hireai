@@ -50,10 +50,13 @@ function Login() {
 
       const user = meResponse.data;
 
-      if (user.role === "ADMIN") {
-        navigate("/admin/dashboard");
+      if (
+         user.role === "ADMIN" ||
+         user.role === "RECRUITER"
+      ) {
+         navigate("/admin/dashboard");
       } else {
-        navigate("/dashboard");
+         navigate("/dashboard");
       }
     } catch (err) {
       console.error("Login error:", err);

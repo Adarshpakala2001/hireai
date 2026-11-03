@@ -39,10 +39,13 @@ const GoogleSignIn = ({ onError }) => {
             localStorage.setItem("access_token", access);
             localStorage.setItem("refresh_token", refresh);
 
-            if (user.role === "ADMIN") {
-              navigate("/admin/dashboard");
+            if (
+               user.role === "ADMIN" ||
+               user.role === "RECRUITER"
+            ) {
+               navigate("/admin/dashboard");
             } else {
-              navigate("/dashboard");
+               navigate("/dashboard");
             }
           } catch (error) {
             console.error("Google authentication error:", error);

@@ -52,7 +52,6 @@ function AdminCreateJob() {
 
     setError("");
     setMessage("");
-    setLoading(true);
 
     const token = localStorage.getItem("access_token");
 
@@ -61,10 +60,14 @@ function AdminCreateJob() {
       return;
     }
 
+    setLoading(true);
+
     const payload = {
       ...formData,
       status: publish ? "OPEN" : "DRAFT",
     };
+
+  // Keep the remaining try-catch-finally code unchanged.
 
     try {
       await api.post("/jobs/", payload, {
